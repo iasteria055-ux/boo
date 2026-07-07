@@ -1,13 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 
-GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxwe7MV1EcPA5xG1_qY19oJtTmPHZnPYCYUv-dusHX-1wASJhVBLEDF4avCrJPN_pny/exec"
+GOOGLE_SHEET_URL = "본인의_구글_앱스_스크립트_주소"
 
 def get_data():
     users = {}
     base_url = "https://ygosu.com/board/pan_boo"
     
-    # 1. 게시판 활동 데이터 (모든 페이지)
+    # 1. 게시판 전체 페이지 크롤링
     page = 1
     while True:
         res = requests.get(f"{base_url}?page={page}")
@@ -16,36 +16,42 @@ def get_data():
         if not rows: break 
         
         for row in rows:
-            nick_tag = row.select_one('.name a')
-            if not nick_tag: continue
-            name = nick_tag.text.strip()
+            link = row.select_one('.tit a')
+            if not link: continue
+            post_url = "https://ygosu.com" + link['href']
+            name = row.select_one('.name a').text.strip()
+            
             if name not in users:
                 users[name] = {'name': name, 'post': 0, 'comment': 0, 'recommend': 0, 'donation': 0, 'quest': 0}
             users[name]['post'] += 1
             
-            vote = row.select_one('.vote')
-            comment = row.select_one('.tit span')
-            if vote and vote.text.isdigit(): users[name]['recommend'] += int(vote.text)
-            if comment:
-                c = comment.text.replace('(','').replace(')','').replace('[','').replace(']','').strip()
-                if c.isdigit(): users[name]['comment'] += int(c)
+            # 상세 페이지에서 추천인 추출
+            try:
+                d_res = requests.get(post_url)
+                d_soup = BeautifulSoup(d_res.text, 'html.parser')
+                for nick in d_soup.select('.view_recommender_detail .nick a'):
+                    # 필요시 추천인 데이터도 users에 누적 가능
+                    pass
+            except: pass
         page += 1
-    
-    # 2. 기부/일퀘 데이터 (모든 페이지)
+
+    # 2. 기부/일퀘 창고 전체 페이지 크롤링 (핵심!)
     page_min = 1
     while True:
         res_min = requests.get(f"{base_url}/?mode=mineral_storage&page={page_min}")
         soup_min = BeautifulSoup(res_min.text, 'html.parser')
         rows_min = soup_min.select('table tr')
-        if len(rows_min) <= 1: break # 데이터 행이 없으면 종료
+        # 데이터 행이 없으면(헤더만 있으면) 종료
+        if len(rows_min) <= 1: break 
         
         for row in rows_min:
             cols = row.select('td')
             if len(cols) >= 3:
                 name = cols[0].text.strip()
-                if name in users:
-                    users[name]['donation'] += int(cols[1].text.replace(',', ''))
-                    users[name]['quest'] += int(cols[2].text.replace(',', ''))
+                if name not in users:
+                    users[name] = {'name': name, 'post': 0, 'comment': 0, 'recommend': 0, 'donation': 0, 'quest': 0}
+                users[name]['donation'] += int(cols[1].text.replace(',', ''))
+                users[name]['quest'] += int(cols[2].text.replace(',', ''))
         page_min += 1
     
     return list(users.values())
