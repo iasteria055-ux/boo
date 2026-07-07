@@ -23,7 +23,7 @@ def get_data():
             
             users[name]['post'] += 1
             users[name]['recommend'] += int(vote.text) if vote and vote.text.isdigit() else 0
-            users[name]['comment'] += int(comment.text.replace('[','').replace(']','')) if comment else 0
+users[name]['comment'] += int(comment.text.replace('(', '').replace(')', '').replace('[', '').replace(']', '')) if comment else 0
 
     # 2. 기부/일퀘 데이터 (창고) - 여기가 중요합니다!
     res_min = requests.get("https://ygosu.com/board/pan_boo/?mode=mineral_storage")
