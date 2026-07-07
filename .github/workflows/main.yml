@@ -1,0 +1,11 @@
+name: daily-crawl
+on:
+  schedule:
+    - cron: '*/10 * * * *' # 10분마다 실행
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: pip install requests beautifulsoup4
+      - run: python main.py
